@@ -6,8 +6,11 @@ Starts against a running server (see README.md):
     venv\\Scripts\\python.exe test_auth_flow.py
 
 Uses a throwaway database (ims_test.db) so your real ims.db is untouched.
+Set the same IMS_DATABASE_URL in this process so the schema checks below run
+against the same database the server is using (SQLite or PostgreSQL).
 """
 import json
+import os
 import sqlite3
 import time
 import urllib.error
@@ -15,6 +18,7 @@ import urllib.parse
 import urllib.request
 
 BASE = "http://127.0.0.1:8001"
+DB_URL = os.environ.get("IMS_DATABASE_URL", "sqlite:///ims.db")
 
 
 def wait_for_server(timeout_seconds=30):
@@ -212,25 +216,51 @@ status, body = call("POST", "/orders",
                     token=staff_token)
 check("Order quantity of 0 is rejected (400)", status == 400, (status, body))
 
-# The schema actually declares foreign keys (checked directly in the test DB)
-conn = sqlite3.connect("ims_test.db")
-fk_counts = {t: len(conn.execute(f"PRAGMA foreign_key_list({t})").fetchall())
-             for t in ("inventory", "order_items", "stock_movements")}
+# The schema actually declares foreign keys (checked directly in the test DB).
+# Works against SQLite (PRAGMA) and PostgreSQL (pg_constraint).
+if DB_URL.startswith("sqlite"):
+    sqlite_file = DB_URL.split("///", 1)[1] if "///" in DB_URL else "ims.db"
+    conn = sqlite3.connect(sqlite_file)
+    fk_counts = {t: len(conn.execute(f"PRAGMA foreign_key_list({t})").fetchall())
+                 for t in ("inventory", "order_items", "stock_movements")}
+    conn.close()
+
+    # ...and the database enforces them (orphan rows are impossible now)
+    enforced = False
+    conn = sqlite3.connect(sqlite_file)
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")   # enforcement is per-connection in SQLite
+        conn.execute("INSERT INTO inventory (product_id, quantity) VALUES (999999, 5)")
+        conn.rollback()
+    except sqlite3.IntegrityError:
+        enforced = True
+    finally:
+        conn.close()
+else:
+    # PostgreSQL: introspect the live catalog and attempt an orphan insert.
+    import psycopg
+    import psycopg.errors as pg_errors
+    with psycopg.connect(DB_URL) as conn:
+        rows = conn.execute(
+            "SELECT r.relname, COUNT(*) FROM pg_constraint c "
+            "JOIN pg_class r ON r.oid = c.conrelid "
+            "WHERE c.contype = 'f' AND r.relname IN "
+            "('inventory', 'order_items', 'stock_movements') GROUP BY r.relname"
+        ).fetchall()
+    fk_counts = {t: dict(rows).get(t, 0)
+                 for t in ("inventory", "order_items", "stock_movements")}
+    enforced = False
+    conn = psycopg.connect(DB_URL)
+    try:
+        conn.execute("INSERT INTO inventory (product_id, quantity) VALUES (999999, 5)")
+        conn.commit()
+    except pg_errors.ForeignKeyViolation:
+        enforced = True
+    finally:
+        conn.close()
 check("inventory declares a foreign key", fk_counts["inventory"] >= 1, fk_counts)
 check("order_items declares two foreign keys", fk_counts["order_items"] >= 2, fk_counts)
 check("stock_movements declares three foreign keys", fk_counts["stock_movements"] >= 3, fk_counts)
-
-# ...and the database enforces them (orphan rows are impossible now)
-conn = sqlite3.connect("ims_test.db")
-conn.execute("PRAGMA foreign_keys=ON")   # enforcement is per-connection in SQLite
-enforced = False
-try:
-    conn.execute("INSERT INTO inventory (product_id, quantity) VALUES (999999, 5)")
-    conn.rollback()
-except sqlite3.IntegrityError:
-    enforced = True
-finally:
-    conn.close()
 check("Orphan inventory rows are rejected by the database", enforced)
 
 # --- 11. Dashboard + themed docs, served by the API itself --------------------

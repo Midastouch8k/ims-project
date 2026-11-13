@@ -28,12 +28,26 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 # The database can be swapped (e.g. PostgreSQL) without touching the code.
 DATABASE_URL = os.environ.get("IMS_DATABASE_URL", "sqlite:///ims.db")
 
+# SQLAlchemy needs the driver named explicitly for PostgreSQL. The app uses
+# psycopg 3 (see requirements.txt), so rewrite postgresql:// → postgresql+psycopg://
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+
 # Used to sign login tokens. Set IMS_SECRET_KEY in the environment for production!
 SECRET_KEY = os.environ.get("IMS_SECRET_KEY", "dev-only-secret-change-me-0123456789abcdef")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # tokens last one workday
 
-engine = create_engine(DATABASE_URL)
+# PostgreSQL through a pooler (e.g. Neon's PgBouncer): server-side prepared
+# statements and stale pooled connections must both be handled.
+if DATABASE_URL.startswith("postgresql+psycopg"):
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"prepare_threshold": None},  # PgBouncer-safe
+        pool_pre_ping=True,                        # survive idle/cloud restarts
+    )
+else:
+    engine = create_engine(DATABASE_URL)
 
 # SQLite ignores foreign key constraints unless this pragma is enabled on
 # every connection (it is OFF by default, even when the schema defines them).
