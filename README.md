@@ -3,6 +3,11 @@
 A FastAPI + SQLite inventory and order management system with JWT authentication,
 role-based access control, and a browser dashboard.
 
+**🔴 Live demo:** https://ims-project-8zqy.onrender.com *(free tier — first load after
+inactivity takes ~60 seconds to wake up; all later requests are instant)*
+
+**Full-Stack Inventory & Order Management System • Designed & Built by Michael Tucker**
+
 ## Features
 
 - **Products** — SKU, name, price, reorder point (duplicate SKUs are rejected)
