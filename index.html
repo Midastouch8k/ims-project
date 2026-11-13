@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IMS — Inventory &amp; Order Management</title>
+    <style>
+        :root {
+            --bg: #0a0e17;
+            --surface: #101725;
+            --surface-2: #16202f;
+            --border: #223046;
+            --text-main: #e6edf7;
+            --text-muted: #8494ac;
+            --accent: #14b8a6;
+            --accent-soft: rgba(20, 184, 166, 0.13);
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warn: #f59e0b;
+            --grad: linear-gradient(135deg, #14b8a6, #0ea5e9);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            font-size: 14px;
+        }
+
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2d3f5c; }
+
+        .hidden { display: none !important; }
+        .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; color: var(--text-muted); }
+
+        /* ------------------------------------------------------------------
+           Login screen
+        ------------------------------------------------------------------ */
+        .login-screen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background:
+                radial-gradient(800px 500px at 70% -10%, rgba(20, 184, 166, 0.15), transparent),
+                radial-gradient(700px 500px at 10% 110%, rgba(14, 165, 233, 0.10), transparent),
+                var(--bg);
+            z-index: 50;
+        }
+
+        .login-card {
+            width: 360px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 32px 30px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+        }
+
+        .login-logo {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            background: var(--grad);
+            color: #fff;
+            font-weight: 700;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+
+        .login-card h1 { font-size: 18px; margin: 0 0 4px; color: #fff; }
+        .login-sub { color: var(--text-muted); margin: 0 0 22px; font-size: 13px; }
+
+        .field { margin-bottom: 14px; }
+        .field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 9px 12px;
+            background: #0e1117;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+        textarea { resize: vertical; min-height: 64px; }
+        input[type="number"] { width: 100%; }
+        .field-hint { color: var(--text-muted); font-size: 11px; margin: 4px 0 0; }
+
+        .hint { color: var(--text-muted); font-size: 11.5px; text-align: center; margin: 16px 0 0; line-height: 1.5; }
+
+        .login-stamp {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 11px;
+            margin: 22px -30px -32px;
+            padding: 14px 30px;
+            border-top: 1px solid var(--border);
+        }
+        .login-stamp span { color: var(--text-main); font-weight: 600; }
+
+        /* ------------------------------------------------------------------
+           App shell
+        ------------------------------------------------------------------ */
+        .app { display: flex; min-height: 100vh; }
+
+        .sidebar {
+            width: 232px;
+            flex-shrink: 0;
+            background: #0d1017;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            inset: 0 auto 0 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 18px 14px;
+            border-bottom: 1px solid var(--border);
+        }
+        .brand-mark {
+            width: 34px; height: 34px;
+            border-radius: 9px;
+            background: var(--grad);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff;
+        }
+        .brand-name { font-weight: 600; font-size: 14px; color: #fff; }
+        .brand-sub { font-size: 11px; color: var(--text-muted); }
+
+        nav { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            width: 100%;
+            transition: background 0.15s, color 0.15s;
+        }
+        .nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
+        .nav-item:hover { background: var(--surface-2); color: var(--text-main); }
+        .nav-item.active { background: var(--accent-soft); color: #7fe3d7; }
+
+        .sidebar-footer {
+            padding: 14px 16px 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .user-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 8px 8px 9px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+        .avatar {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: var(--grad);
+            color: #fff;
+            font-weight: 700;
+            font-size: 13px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .user-meta { min-width: 0; flex: 1; }
+        .user-name { font-size: 12px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-role { font-size: 10.5px; color: var(--text-muted); }
+        .icon-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            width: 28px; height: 28px;
+            border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .icon-btn:hover { background: rgba(239, 68, 68, 0.12); color: #f87171; }
+        .icon-btn svg { width: 15px; height: 15px; }
+        .stamp { font-size: 10.5px; color: var(--text-muted); line-height: 1.6; margin: 2px 0 0; }
+        .stamp span { color: var(--text-main); font-weight: 600; }
+
+        .main { flex: 1; margin-left: 232px; padding: 22px 30px 40px; min-width: 0; }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+        .topbar h1 { font-size: 20px; margin: 0; color: #fff; letter-spacing: -0.3px; }
+
+        section[id^="section-"] { animation: fadeIn 0.18s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+        /* ------------------------------------------------------------------
+           Components
+        ------------------------------------------------------------------ */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 20px;
+        }
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .panel-head h2 { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin: 0; }
+
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+        .kpi {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 18px;
+        }
+        .kpi-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+        .kpi-value { font-size: 26px; font-weight: 650; color: #fff; letter-spacing: -0.5px; }
+        .kpi-value.warn { color: var(--warn); }
+        .kpi-value.good { color: #2dd4bf; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background: rgba(255, 255, 255, 0.02); }
+        td.actions { text-align: right; white-space: nowrap; }
+        td.empty { color: var(--text-muted); text-align: center; padding: 22px; }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-green { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+        .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+        .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+        .badge-gray { background: rgba(139, 148, 167, 0.15); color: var(--text-muted); }
+        .badge-indigo { background: var(--accent-soft); color: #5eead4; }
+
+        .btn {
+            padding: 8px 14px;
+            background: var(--grad);
+            color: #04202a;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: opacity 0.15s, background 0.15s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-weight: 500; }
+        .btn-ghost:hover { background: var(--surface-2); color: var(--text-main); opacity: 1; }
+        .btn-danger { background: rgba(239, 68, 68, 0.12); color: #f87171; }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.22); opacity: 1; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 7px; }
+        .toolbar { display: flex; gap: 10px; align-items: center; }
+        .toolbar input { width: 170px; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(5, 7, 10, 0.65);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 60;
+        }
+        .modal {
+            width: 380px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+        }
+        .modal h3 { margin: 0 0 16px; font-size: 15px; color: #fff; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            right: 22px;
+            bottom: 22px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            max-width: 340px;
+            z-index: 70;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+            animation: fadeIn 0.18s ease;
+        }
+        .toast.success { border-left-color: var(--success); }
+        .toast.error { border-left-color: var(--danger); }
+
+        /* Small screens: sidebar stacks on top */
+        @media (max-width: 860px) {
+            .sidebar { position: static; width: 100%; flex-direction: row; align-items: center; }
+            nav { flex-direction: row; overflow-x: auto; padding: 8px; }
+            .nav-item { white-space: nowrap; }
+            .sidebar-footer { border-top: none; border-left: 1px solid var(--border); }
+            .brand-sub { display: none; }
+            .main { margin-left: 0; }
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        /* Name stamp — always visible at the bottom of the page */
+        .main-footer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 12px;
+            padding: 18px 0 4px;
+            border-top: 1px solid var(--border);
+            margin-top: 10px;
+        }
+        .main-footer span { color: var(--text-main); font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <!-- ======================= Login ======================= -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-card">
+            <div class="login-logo">IM</div>
+            <h1>Inventory &amp; Order Management</h1>
+            <p class="login-sub">Sign in to your workspace</p>
+            <div class="field">
+                <label>Email</label>
+                <input id="login-email" type="email" placeholder="email@example.com" autocomplete="username">
+            </div>
+            <div class="field">
+                <label>Password</label>
+                <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password">
+            </div>
+            <button class="btn" style="width: 100%; margin-top: 6px;" onclick="login()">Sign in</button>
+            <button class="btn btn-ghost" style="width: 100%; margin-top: 10px;" onclick="register()">Create account</button>
+            <p class="hint">The first account ever created automatically becomes the administrator.<br>After that, only an admin can add more users.</p>
+            <p class="login-stamp">Full-Stack Inventory &amp; Order Management System &bull; Designed &amp; Built by <span>Michael Tucker</span></p>
+        </div>
+    </div>
+
+    <!-- ======================= App shell ======================= -->
+    <div id="app" class="app hidden">
+
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.5 20 7v10l-8 4.5L4 17V7l8-4.5Z"/><path d="M4 7l8 4.5L20 7"/><path d="M12 11.5V21.5"/></svg>
+                </div>
+                <div>
+                    <div class="brand-name">IMS</div>
+                    <div class="brand-sub">Inventory Manager</div>
+                </div>
+            </div>
+
+            <nav id="nav">
+                <button class="nav-item active" data-section="dashboard" data-title="Dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>
+                    Dashboard
+                </button>
+                <button class="nav-item" data-section="products" data-title="Products">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.5 20 7v10l-8 4.5L4 17V7l8-4.5Z"/><path d="M4 7l8 4.5L20 7"/><path d="M12 11.5V21.5"/></svg>
+                    Products
+                </button>
+                <button class="nav-item" data-section="inventory" data-title="Inventory">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3 21 8l-9 5-9-5 9-5Z"/><path d="M3 13l9 5 9-5"/></svg>
+                    Inventory
+                </button>
+                <button class="nav-item" data-section="orders" data-title="Orders">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.5 11h10L20 7H6"/></svg>
+                    Orders
+                </button>
+                <button class="nav-item" data-section="history" data-title="Stock History">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg>
+                    Stock History
+                </button>
+                <button class="nav-item admin-only hidden" data-section="users" data-title="Users">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c.7-3.1 2.9-4.7 5.5-4.7s4.8 1.6 5.5 4.7"/><circle cx="16.8" cy="9" r="2.6"/><path d="M16.4 14.6c2.2.1 3.8 1.5 4.3 3.9"/></svg>
+                    Users
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-card">
+                    <div class="avatar" id="user-avatar">?</div>
+                    <div class="user-meta">
+                        <div class="user-name" id="user-name"></div>
+                        <div class="user-role" id="user-role"></div>
+                    </div>
+                    <button class="icon-btn" onclick="logout()" title="Log out">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+                    </button>
+                </div>
+                <p class="stamp">Full-Stack Inventory &amp; Order Management System &bull; Designed &amp; Built by <span>Michael Tucker</span></p>
+            </div>
+        </aside>
+
+        <main class="main">
+            <header class="topbar">
+                <h1 id="section-title">Dashboard</h1>
+                <button class="btn btn-ghost btn-sm" onclick="refreshData()">
+                    <svg style="vertical-align: -2px; margin-right: 5px;" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5"/></svg>
+                    Refresh
+                </button>
+            </header>
+
+            <!-- Dashboard -->
+            <section id="section-dashboard">
+                <div class="kpi-row">
+                    <div class="kpi"><div class="kpi-label">Products</div><div class="kpi-value" id="kpi-products">–</div></div>
+                    <div class="kpi"><div class="kpi-label">Units in stock</div><div class="kpi-value good" id="kpi-units">–</div></div>
+                    <div class="kpi"><div class="kpi-label">Low-stock items</div><div class="kpi-value" id="kpi-low">–</div></div>
+                    <div class="kpi"><div class="kpi-label">Orders placed</div><div class="kpi-value" id="kpi-orders">–</div></div>
+                </div>
+                <div class="grid-2">
+                    <div class="panel">
+                        <div class="panel-head"><h2>Low stock</h2><button class="btn btn-ghost btn-sm" onclick="showSection('inventory')">View inventory</button></div>
+                        <div id="dashboard-low"></div>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-head"><h2>Recent orders</h2><button class="btn btn-ghost btn-sm" onclick="showSection('orders')">View orders</button></div>
+                        <div id="dashboard-recent"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Products -->
+            <section id="section-products" class="hidden">
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2>Catalog</h2>
+                        <button class="btn admin-only hidden" onclick="openAddProductModal()">+ Add product</button>
+                    </div>
+                    <div id="product-table"></div>
+                </div>
+            </section>
+
+            <!-- Inventory -->
+            <section id="section-inventory" class="hidden">
+                <div class="panel">
+                    <div class="panel-head"><h2>Stock levels</h2></div>
+                    <div id="inventory-table"></div>
+                </div>
+            </section>
+
+            <!-- Orders -->
+            <section id="section-orders" class="hidden">
+                <div class="panel">
+                    <div class="panel-head"><h2>All orders</h2></div>
+                    <div id="order-table"></div>
+                </div>
+            </section>
+
+            <!-- Stock history -->
+            <section id="section-history" class="hidden">
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2>Audit trail</h2>
+                        <div class="toolbar">
+                            <input id="history-product-id" type="number" min="1" placeholder="product ID (optional)">
+                            <button class="btn btn-sm" onclick="loadMovements()">Filter</button>
+                            <button class="btn btn-ghost btn-sm" onclick="clearHistoryFilter()">Clear</button>
+                        </div>
+                    </div>
+                    <div id="movement-table"></div>
+                </div>
+            </section>
+
+            <!-- Users (admin only) -->
+            <section id="section-users" class="hidden">
+                <div class="panel">
+                    <div class="panel-head"><h2>Accounts</h2></div>
+                    <div id="users-table"></div>
+                </div>
+            </section>
+
+            <footer class="main-footer">
+                Full-Stack Inventory &amp; Order Management System &bull; Designed &amp; Built by <span>Michael Tucker</span>
+            </footer>
+        </main>
+    </div>
+
+    <!-- ======================= Modal ======================= -->
+    <div id="modal-overlay" class="modal-overlay hidden" onclick="if (event.target === this) closeModal()">
+        <div class="modal">
+            <h3 id="modal-title"></h3>
+            <div id="modal-body"></div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button class="btn" id="modal-ok">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script>
+        // The API is served by the same FastAPI app that serves this page,
+        // so relative URLs work both locally and in production.
+        const API = '';
+
+        let authToken = localStorage.getItem('ims_token') || null;
+        let currentUser = null;
+        let toastTimer = null;
+        let historyLoaded = false;
+
+        const state = { products: [], inventory: [], orders: [], lowStock: [], movements: [], users: [] };
+
+        // ------------------------------------------------------------- utils
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function authHeaders(extra = {}) {
+            const headers = { ...extra };
+            if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+            return headers;
+        }
+
+        async function apiFetch(url, options = {}) {
+            const response = await fetch(url, { ...options, headers: authHeaders(options.headers || {}) });
+            if (response.status === 401) logout();
+            return response;
+        }
+
+        async function errorMessage(response) {
+            try {
+                const data = await response.json();
+                return typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail || data);
+            } catch { return 'HTTP ' + response.status; }
+        }
+
+        async function getJSON(url) {
+            const response = await apiFetch(url);
+            if (!response.ok) { showToast('Request failed: ' + await errorMessage(response), 'error'); return []; }
+            return response.json();
+        }
+
+        async function postJSON(url, body) {
+            const response = await apiFetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!response.ok) {
+                showToast((await errorMessage(response)), 'error');
+                return null;
+            }
+            return response.json();
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.add('hidden'), 3800);
+        }
+
+        function isAdmin() { return currentUser && currentUser.role === 'admin'; }
+
+        // ------------------------------------------------------------- auth
+        async function login() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            if (!email || !password) { showToast('Enter your email and password.', 'error'); return; }
+
+            const body = new URLSearchParams({ username: email, password: password });
+            let response;
+            try {
+                response = await fetch(API + '/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: body
+                });
+            } catch {
+                showToast(API ? 'Could not reach the API at ' + API + ' — is uvicorn running?'
+                              : 'Cannot reach the API. Open the app at http://127.0.0.1:8000 — not the file directly.', 'error');
+                return;
+            }
+            if (!response.ok) { showToast(await errorMessage(response), 'error'); return; }
+
+            const data = await response.json();
+            authToken = data.access_token;
+            localStorage.setItem('ims_token', authToken);
+            await enterApp();
+        }
+
+        async function register() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            if (!email || !password) { showToast('Enter an email and password to create your account.', 'error'); return; }
+            if (password.length < 8) { showToast('Password must be at least 8 characters.', 'error'); return; }
+
+            let response;
+            try {
+                response = await fetch(API + '/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, password: password })
+                });
+            } catch {
+                showToast(API ? 'Could not reach the API at ' + API + ' — is uvicorn running?'
+                              : 'Cannot reach the API. Open the app at http://127.0.0.1:8000 — not the file directly.', 'error');
+                return;
+            }
+            if (!response.ok) { showToast(await errorMessage(response), 'error'); return; }
+
+            showToast('Account created — signing you in…');
+            await login();
+        }
+
+        async function enterApp() {
+            const me = await getJSON(API + '/auth/me');
+            if (!me || !me.id) { logout(); return; }
+            currentUser = me;
+
+            document.getElementById('user-avatar').textContent = (me.email[0] || '?').toUpperCase();
+            document.getElementById('user-name').textContent = me.email;
+            document.getElementById('user-role').textContent = me.role === 'admin' ? 'Administrator' : 'Staff';
+            document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin()));
+
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+
+            historyLoaded = false;
+            await loadAll();
+            showSection('dashboard');
+        }
+
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('ims_token');
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+        }
+
+        // ------------------------------------------------------------- data
+        async function loadAll() {
+            const [products, inventory, orders, lowStock] = await Promise.all([
+                getJSON(API + '/products'),
+                getJSON(API + '/inventory'),
+                getJSON(API + '/orders'),
+                getJSON(API + '/inventory/low-stock')
+            ]);
+            state.products = products;
+            state.inventory = inventory;
+            state.orders = orders;
+            state.lowStock = lowStock;
+
+            if (isAdmin()) state.users = await getJSON(API + '/users');
+
+            await loadMovements(true);
+            renderAll();
+        }
+
+        async function refreshData() {
+            showToast('Refreshing…', 'success');
+            await loadAll();
+        }
+
+        async function loadMovements(silent = false) {
+            const productId = document.getElementById('history-product-id').value.trim();
+            const query = productId ? ('?product_id=' + encodeURIComponent(productId)) : '';
+            state.movements = await getJSON(API + '/stock/movements' + query);
+            historyLoaded = true;
+            renderMovements();
+            if (!silent) showToast('History updated.');
+        }
+
+        function clearHistoryFilter() {
+            document.getElementById('history-product-id').value = '';
+            loadMovements();
+        }
+
+        function renderAll() {
+            renderKPIs();
+            renderDashboard();
+            renderProducts();
+            renderInventory();
+            renderOrders();
+            renderMovements();
+            renderUsers();
+        }
+
+        // ------------------------------------------------------------- renders
+        const invMap = () => new Map(state.inventory.map(i => [i.product_id, i.quantity]));
+        const prodMap = () => new Map(state.products.map(p => [p.id, p]));
+
+        function renderKPIs() {
+            const units = state.inventory.reduce((sum, i) => sum + (i.quantity || 0), 0);
+            const lowCount = state.lowStock.length;
+            document.getElementById('kpi-products').textContent = state.products.length;
+            document.getElementById('kpi-units').textContent = units;
+            const lowEl = document.getElementById('kpi-low');
+            lowEl.textContent = lowCount;
+            lowEl.className = 'kpi-value' + (lowCount > 0 ? ' warn' : ' good');
+            document.getElementById('kpi-orders').textContent = state.orders.length;
+        }
+
+        function renderDashboard() {
+            let low = '<table><thead><tr><th>SKU</th><th>Product</th><th>Left</th><th>Reorder at</th></tr></thead><tbody>';
+            if (state.lowStock.length === 0) {
+                low += '<tr><td colspan="4" class="empty">Everything is comfortably in stock. 🎉</td></tr>';
+            } else {
+                state.lowStock.slice(0, 5).forEach(r => {
+                    low += `<tr><td class="mono">${esc(r.sku)}</td><td>${esc(r.name)}</td>
+                        <td><span class="badge badge-red">${r.quantity_left}</span></td><td>${r.reorder_point}</td></tr>`;
+                });
+            }
+            low += '</tbody></table>';
+            document.getElementById('dashboard-low').innerHTML = low;
+
+            const recent = [...state.orders].sort((a, b) => b.id - a.id).slice(0, 5);
+            let ord = '<table><thead><tr><th>Order</th><th>Customer</th><th>Status</th></tr></thead><tbody>';
+            if (recent.length === 0) {
+                ord += '<tr><td colspan="3" class="empty">No orders yet — place one from the Products page.</td></tr>';
+            } else {
+                recent.forEach(o => {
+                    ord += `<tr><td class="mono">#${o.id}</td><td>${esc(o.customer_name)}</td><td>${statusBadge(o.status)}</td></tr>`;
+                });
+            }
+            ord += '</tbody></table>';
+            document.getElementById('dashboard-recent').innerHTML = ord;
+        }
+
+        function statusBadge(status) {
+            const cls = status === 'cancelled' ? 'badge-red' : 'badge-green';
+            return `<span class="badge ${cls}">${esc(status)}</span>`;
+        }
+
+        function renderProducts() {
+            const inv = invMap();
+            let html = '<table><thead><tr><th>SKU</th><th>Name</th><th>Price</th><th>In stock</th><th>Reorder at</th><th></th></tr></thead><tbody>';
+            if (state.products.length === 0) {
+                html += '<tr><td colspan="6" class="empty">No products yet.' + (isAdmin() ? ' Use “+ Add product” to create the first one.' : '') + '</td></tr>';
+            } else {
+                state.products.forEach(p => {
+                    const qty = inv.get(p.id) ?? 0;
+                    const low = qty <= p.reorder_point;
+                    html += `<tr>
+                        <td class="mono">${esc(p.sku)}</td>
+                        <td>${esc(p.name)}</td>
+                        <td>$${Number(p.price).toFixed(2)}</td>
+                        <td><span class="badge ${low ? 'badge-red' : 'badge-green'}">${qty}</span></td>
+                        <td>${p.reorder_point}</td>
+                        <td class="actions">
+                            <button class="btn btn-sm" onclick="openOrderModal(${p.id})">Order</button>
+                            ${isAdmin() ? `<button class="btn btn-sm btn-ghost" onclick="openAdjustModal(${p.id})">Adjust</button>` : ''}
+                        </td>
+                    </tr>`;
+                });
+            }
+            html += '</tbody></table>';
+            document.getElementById('product-table').innerHTML = html;
+        }
+
+        function renderInventory() {
+            const prod = prodMap();
+            let html = '<table><thead><tr><th>Product</th><th>Quantity</th><th>Status</th></tr></thead><tbody>';
+            if (state.inventory.length === 0) {
+                html += '<tr><td colspan="3" class="empty">No stock records yet.</td></tr>';
+            } else {
+                state.inventory.forEach(i => {
+                    const p = prod.get(i.product_id);
+                    const reorder = p ? p.reorder_point : 0;
+                    let badge = '<span class="badge badge-green">OK</span>';
+                    if (i.quantity <= 0) badge = '<span class="badge badge-red">Out of stock</span>';
+                    else if (i.quantity <= reorder) badge = '<span class="badge badge-amber">Low</span>';
+                    html += `<tr><td>${p ? esc(p.name) : 'Product #' + i.product_id}</td><td>${i.quantity}</td><td>${badge}</td></tr>`;
+                });
+            }
+            html += '</tbody></table>';
+            document.getElementById('inventory-table').innerHTML = html;
+        }
+
+        function renderOrders() {
+            let html = '<table><thead><tr><th>Order</th><th>Customer</th><th>Status</th><th></th></tr></thead><tbody>';
+            if (state.orders.length === 0) {
+                html += '<tr><td colspan="4" class="empty">No orders yet.</td></tr>';
+            } else {
+                state.orders.forEach(o => {
+                    const cancelBtn = o.status !== 'cancelled'
+                        ? `<button class="btn btn-sm btn-danger" onclick="cancelOrder(${o.id})">Cancel</button>`
+                        : '';
+                    html += `<tr><td class="mono">#${o.id}</td><td>${esc(o.customer_name)}</td><td>${statusBadge(o.status)}</td><td class="actions">${cancelBtn}</td></tr>`;
+                });
+            }
+            html += '</tbody></table>';
+            document.getElementById('order-table').innerHTML = html;
+        }
+
+        function renderMovements() {
+            let html = '<table><thead><tr><th>When</th><th>Who</th><th>Product</th><th>Change</th><th>Reason</th><th>Note</th></tr></thead><tbody>';
+            if (state.movements.length === 0) {
+                html += '<tr><td colspan="6" class="empty">No stock movements recorded yet.</td></tr>';
+            } else {
+                state.movements.forEach(m => {
+                    const change = (m.quantity_change > 0 ? '+' : '') + m.quantity_change;
+                    const badge = m.quantity_change > 0 ? 'badge-green' : 'badge-red';
+                    html += `<tr>
+                        <td>${new Date(m.created_at).toLocaleString()}</td>
+                        <td>${esc(m.user_email || '—')}</td>
+                        <td>${esc(m.product_name)}</td>
+                        <td><span class="badge ${badge}">${change}</span></td>
+                        <td>${esc(m.reason)}</td>
+                        <td>${esc(m.note || '')}</td>
+                    </tr>`;
+                });
+            }
+            html += '</tbody></table>';
+            document.getElementById('movement-table').innerHTML = html;
+        }
+
+        function renderUsers() {
+            let html = '<table><thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th></tr></thead><tbody>';
+            if (!isAdmin()) {
+                html += '<tr><td colspan="4" class="empty">Admin access required.</td></tr>';
+            } else if (state.users.length === 0) {
+                html += '<tr><td colspan="4" class="empty">No users found.</td></tr>';
+            } else {
+                state.users.forEach(u => {
+                    html += `<tr><td>${esc(u.email)}</td><td>${esc(u.full_name || '—')}</td>
+                        <td><span class="badge ${u.role === 'admin' ? 'badge-indigo' : 'badge-gray'}">${esc(u.role)}</span></td>
+                        <td><span class="badge ${u.is_active ? 'badge-green' : 'badge-gray'}">${u.is_active ? 'active' : 'disabled'}</span></td></tr>`;
+                });
+            }
+            html += '</tbody></table>';
+            document.getElementById('users-table').innerHTML = html;
+        }
+
+        // ------------------------------------------------------------- actions
+        function openOrderModal(productId) {
+            const p = prodMap().get(productId);
+            if (!p) return;
+            openModal('New order — ' + p.name, `
+                <div class="field"><label>Customer name</label><input id="f-customer" placeholder="Who is this for?"></div>
+                <div class="field"><label>Quantity</label><input id="f-qty" type="number" min="1" value="1"></div>
+            `, 'Place order', async () => {
+                const customer = document.getElementById('f-customer').value.trim();
+                const qty = parseInt(document.getElementById('f-qty').value, 10);
+                if (!customer) { showToast('Enter a customer name.', 'error'); return false; }
+                if (!qty || qty < 1) { showToast('Quantity must be at least 1.', 'error'); return false; }
+                const data = await postJSON(API + '/orders', { customer_name: customer, product_id: productId, quantity: qty });
+                if (!data) return false;   // server error shown; keep the modal open
+                showToast(data.message);
+                await loadAll();
+                return true;
+            });
+        }
+
+        function openAdjustModal(productId) {
+            const p = prodMap().get(productId);
+            if (!p) return;
+            openModal('Adjust stock — ' + p.name, `
+                <div class="field"><label>Quantity change</label><input id="f-qty" type="number" value="10">
+                    <p class="field-hint">Use a negative number to remove stock (e.g. -3).</p></div>
+                <div class="field"><label>Reason (required — saved to the audit log)</label>
+                    <textarea id="f-note" placeholder="e.g. damaged in warehouse, received delivery, stock count correction"></textarea></div>
+            `, 'Apply adjustment', async () => {
+                const qty = parseInt(document.getElementById('f-qty').value, 10);
+                const note = document.getElementById('f-note').value.trim();
+                if (Number.isNaN(qty) || qty === 0) { showToast('Enter a non-zero quantity change.', 'error'); return false; }
+                if (!note) { showToast('A reason is required — it goes into the audit log.', 'error'); return false; }
+                const data = await postJSON(API + '/stock/adjust', { product_id: productId, quantity: qty, note: note });
+                if (!data) return false;
+                showToast(data.message);
+                await loadAll();
+                return true;
+            });
+        }
+
+        function openAddProductModal() {
+            openModal('Add product', `
+                <div class="field"><label>SKU</label><input id="f-sku" placeholder="e.g. WIDGET-001"></div>
+                <div class="field"><label>Name</label><input id="f-name" placeholder="Product name"></div>
+                <div class="field"><label>Price ($)</label><input id="f-price" type="number" min="0" step="0.01" value="0"></div>
+                <div class="field"><label>Reorder point</label><input id="f-reorder" type="number" min="0" value="5"></div>
+            `, 'Create product', async () => {
+                const sku = document.getElementById('f-sku').value.trim();
+                const name = document.getElementById('f-name').value.trim();
+                const price = parseFloat(document.getElementById('f-price').value);
+                const reorder = parseInt(document.getElementById('f-reorder').value, 10);
+                if (!sku || !name) { showToast('SKU and name are required.', 'error'); return false; }
+                const data = await postJSON(API + '/products', {
+                    sku: sku, name: name, price: price || 0, reorder_point: reorder || 0
+                });
+                if (!data) return false;
+                showToast(data.message);
+                await loadAll();
+                return true;
+            });
+        }
+
+        async function cancelOrder(orderId) {
+            if (!confirm('Cancel order #' + orderId + '? Stock will be returned to inventory.')) return;
+            const data = await postJSON(API + '/orders/' + orderId + '/cancel');
+            if (!data) return;
+            showToast(data.message);
+            await loadAll();
+        }
+
+        // ------------------------------------------------------------- modal
+        function openModal(title, bodyHTML, submitLabel, onSubmit) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').innerHTML = bodyHTML;
+            const ok = document.getElementById('modal-ok');
+            ok.textContent = submitLabel;
+            ok.onclick = async () => {
+                const shouldClose = await onSubmit();
+                if (shouldClose !== false) closeModal();
+            };
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            const first = document.querySelector('#modal-body input, #modal-body textarea');
+            if (first) first.focus();
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.add('hidden');
+        }
+
+        // ------------------------------------------------------------- navigation
+        function showSection(name) {
+            document.querySelectorAll('.nav-item').forEach(btn =>
+                btn.classList.toggle('active', btn.dataset.section === name));
+            document.querySelectorAll('main section').forEach(sec =>
+                sec.classList.toggle('hidden', sec.id !== 'section-' + name));
+            const btn = document.querySelector(`.nav-item[data-section="${name}"]`);
+            if (btn) document.getElementById('section-title').textContent = btn.dataset.title;
+            if (name === 'history' && !historyLoaded) loadMovements(true);
+            if (name === 'users' && isAdmin()) renderUsers();
+        }
+
+        // ------------------------------------------------------------- boot
+        document.querySelectorAll('.nav-item').forEach(btn =>
+            btn.addEventListener('click', () => showSection(btn.dataset.section)));
+
+        if (authToken) enterApp();
+    </script>
+
+</body>
+</html>
